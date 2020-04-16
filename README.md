@@ -16,10 +16,9 @@ Il faut relier les données de strapi à gatsby. Pour ce faire, il existe un plu
 
 Ensuite, vous devriez voir les données dans le GraphiQL.
 
+
+![Image](/static/images/strapi-beers.png)
+
 ## Et après ? 
-
-Vous devriez avoir cela pour la recherche de la brasserie "Lancelot" :
-
-![Image](/static/images/lancelot.png)
 
 Vous pouvez aller en step-2-3.
