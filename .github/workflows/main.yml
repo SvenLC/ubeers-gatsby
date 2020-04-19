@@ -8,6 +8,10 @@ on: repository_dispatch
 jobs:
   restart:
     runs-on: ubuntu-latest
+    env:
+      GHOST_URI: ${{ secrets.GHOST_URI }}
+      GHOST_TOKEN: ${{ secrets.GHOST_TOKEN }}
+      STRAPI_URI: ${{ secrets.STRAPI_URI }}
 
     steps:
       - uses: actions/checkout@v2
@@ -16,8 +20,22 @@ jobs:
         with:
           node-version: 12.16.1
 
+      # This action requires an unshallow working copy,
+      # so the following prerequisites are necessary:
+
+      - run: git fetch --prune --unshallow
+      - run: git config --global user.email "cois.tony@gmail.com"
+      - run: git config --global user.name "Tony Cois"
+
+      - run: git checkout deploy
+      - run: npm install
+      - run: npm run build
+
+      - run: git add --force ./public/
+      - run: git commit -m 'gatsby build prepare to deploy'
+
       # Install and deploy app
       - run: npm install -g clever-tools
       - run: clever login --token ${{ secrets.CLEVER_TOKEN }} --secret ${{ secrets.CLEVER_SECRET }}
       - run: clever link app_a23540e1-a005-409a-9c57-d0feb6fcc5b4 --alias ubeers-gatsby
-      - run: clever restart
+      - run: clever deploy --branch deploy --force
