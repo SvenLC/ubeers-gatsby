@@ -3,10 +3,13 @@
 
 name: Restart
 
+# Sur un événement "push" sur la branche production
 on: repository_dispatch
 
+# Création de notre job deploy
 jobs:
-  restart:
+  build:
+    # On sélectionne un ubuntu
     runs-on: ubuntu-latest
     env:
       GHOST_URI: ${{ secrets.GHOST_URI }}
@@ -14,28 +17,63 @@ jobs:
       STRAPI_URI: ${{ secrets.STRAPI_URI }}
 
     steps:
+      # On utilise une action de Github pour récupérer le repo local
       - uses: actions/checkout@v2
+
+      # Utilisation de notre version de node
       - name: Use Node.js 12.16.1
         uses: actions/setup-node@v1
         with:
           node-version: 12.16.1
 
-      # This action requires an unshallow working copy,
-      # so the following prerequisites are necessary:
+      - name: Build Gatsby
+        run: |
+          git checkout production
+          npm install
+          npm run build
 
-      - run: git fetch --prune --unshallow
-      - run: git config --global user.email "cois.tony@gmail.com"
-      - run: git config --global user.name "Tony Cois"
+      # Création d'un artifacts
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: public
+          path: ./public/
 
-      - run: git checkout deploy
-      - run: npm install
-      - run: npm run build
+  deploy:
+    needs: [build]
+    # On sélectionne un ubuntu
+    runs-on: ubuntu-latest
 
-      - run: git add --force ./public/
-      - run: git commit -m 'gatsby build prepare to deploy'
+    steps:
+      # On utilise une action de Github pour récupérer le repo local
+      - uses: actions/checkout@v2
 
-      # Install and deploy app
-      - run: npm install -g clever-tools
-      - run: clever login --token ${{ secrets.CLEVER_TOKEN }} --secret ${{ secrets.CLEVER_SECRET }}
-      - run: clever link app_a23540e1-a005-409a-9c57-d0feb6fcc5b4 --alias ubeers-gatsby
-      - run: clever deploy --branch deploy --force
+      # Utilisation de notre version de node
+      - name: Use Node.js 12.16.1
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.16.1
+
+      # Récupération du build
+      - uses: actions/download-artifact@master
+        with:
+          name: public
+          path: ./public/
+
+      # Récupération de l'ensemble des commits du repository. Par défaut, le clone ne récupére pas un historique profond. Or pour Clever Cloud, c'est indispensable
+      - name: Run git commands
+        run: |
+          git fetch --prune --unshallow
+          git checkout production
+          git config --global user.email cois.tony@gmail.com
+          git config --global user.name TonyCois
+          git add --force ./public/
+          git commit -m 'gatsby build prepare to deploy'
+
+      # Installation de clever-tools and deploy app
+      - name: Instal and Deploy to Clever
+        run: |
+          npm install -g clever-tools
+          clever login --token ${{ secrets.CLEVER_TOKEN }} --secret ${{ secrets.CLEVER_SECRET }}
+          clever link ${{ secrets.CLEVER_APP_ID }} --alias ubeers-strapi
+          clever deploy --branch production --force
