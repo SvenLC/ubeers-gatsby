@@ -28,6 +28,7 @@ jobs:
 
       - name: Build Gatsby
         run: |
+          git fetch --prune --unshallow
           git checkout production
           npm install
           npm run build
